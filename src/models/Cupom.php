@@ -7,15 +7,16 @@ class Cupom {
     }
 
     public function listarPorComerciante($idComerciante) {
-        $stmt = $this->conn->prepare("SELECT * FROM cupons WHERE id_comerciante = ?");
+        // The foreign key to Comercio is cnpj_comercio
+        $stmt = $this->conn->prepare("SELECT * FROM CUPOM WHERE cnpj_comercio = ?");
         $stmt->execute([$idComerciante]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function listarTodos() {
-        $query = "SELECT * FROM cupons";
-        $result = $this->conn->query($query);
-        return $result->fetch_all(MYSQLI_ASSOC);
+        $stmt = $this->conn->prepare("SELECT * FROM CUPOM");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }
 ?>

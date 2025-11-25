@@ -7,14 +7,14 @@ class CupomController {
         require_auth();
         $cupomModel = new Cupom(Database::getConnection());
         $cupons = $cupomModel->listarTodos();
-        include '../src/views/cupons/listar.php';
+        include __DIR__ . '/../views/cupons/listar.php';
     }
 
     public function criar() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // valida e salva
         } else {
-            include '../src/views/cupons/form.php';
+            include __DIR__ . '/../views/cupons/form.php';
         }
     }
 }
