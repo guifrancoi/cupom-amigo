@@ -2,9 +2,11 @@
 require_once __DIR__ . '/../src/auth/auth.php';
 require_auth();
 
-require_once __DIR__ . '/../src/controllers/CupomController.php';
-
-$controller = new CupomController();
-$controller->index();
+// route by user_type
+if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'associado') {
+	require_once __DIR__ . '/../src/controllers/AssociadoController.php';
+} else {
+	require_once __DIR__ . '/../src/controllers/CupomController.php';
+}
 
 ?>

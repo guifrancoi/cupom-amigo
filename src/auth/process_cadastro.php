@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 require_once __DIR__ . '/../config/connection.php';
 require_once __DIR__ . '/../models/Associado.php';
@@ -31,6 +33,17 @@ try {
             $_SESSION['register_error'] = 'CPF já cadastrado.';
             header('Location: /cupom-amigo/src/views/auth/cadastrar.php');
             exit;
+        }
+
+        // Valida id_categoria (pode vir do formulário de comércio)
+        $id_categoria = !empty($_POST['id_categoria']) ? (int)$_POST['id_categoria'] : null;
+        if ($id_categoria !== null) {
+            $stmtCat = $pdo->prepare('SELECT 1 FROM CATEGORIA WHERE id_categoria = :id LIMIT 1');
+            $stmtCat->execute([':id' => $id_categoria]);
+            if (!$stmtCat->fetch()) {
+                // Categoria não existe -> define NULL para evitar violação de FK
+                $id_categoria = null;
+            }
         }
 
         $data = [
@@ -78,7 +91,7 @@ try {
             'estado_comercio' => $_POST['estado_comercio'] ?? null,
             'cep_comercio' => $_POST['cep_comercio'] ?? null,
             'email_comercio' => $_POST['email_comercio'] ?? null,
-            'id_categoria' => !empty($_POST['id_categoria']) ? (int)$_POST['id_categoria'] : null,
+            'id_categoria' => $id_categoria,
         ];
 
         $com->create($data);
@@ -91,8 +104,8 @@ try {
         header('Location: /cupom-amigo/src/views/auth/cadastrar.php');
         exit;
     }
-} catch (PDOException $e) {
-    // TODO, pode-se logar a mensagem. Aqui retornamos genérico para o usuário.
+} catch (Exception $e) {
+    // Registra erro genérico para o usuário; detalhe pode ser logado em arquivo no futuro
     $_SESSION['register_error'] = 'Erro ao acessar o banco de dados: ' . $e->getMessage();
     header('Location: /cupom-amigo/src/views/auth/cadastrar.php');
     exit;
