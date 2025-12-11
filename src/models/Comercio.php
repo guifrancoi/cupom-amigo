@@ -33,6 +33,31 @@ class Comercio {
         $stmt = $this->pdo->prepare($sql);
         return $stmt->execute($params);
     }
+
+    public function findByCnpj(string $cnpj): ?array {
+        $sql = 'SELECT cnpj_comercio AS id, senha_comercio AS senha, nome_fantasia_comercio AS nome, 
+                raz_social_comercio, email_comercio AS email, id_categoria, endereco_comercio 
+                FROM COMERCIO WHERE cnpj_comercio = :cnpj LIMIT 1';
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':cnpj' => $cnpj]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result ?: null;
+    }
+
+    public function findByEmail(string $email): ?array {
+        $sql = 'SELECT cnpj_comercio AS id, email_comercio AS email, nome_fantasia_comercio AS nome 
+                FROM COMERCIO WHERE LOWER(email_comercio) = :email LIMIT 1';
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':email' => strtolower($email)]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result ?: null;
+    }
+
+    public function updatePassword(string $cnpj, string $senhaHash): bool {
+        $sql = 'UPDATE COMERCIO SET senha_comercio = :senha WHERE cnpj_comercio = :cnpj';
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute([':senha' => $senhaHash, ':cnpj' => $cnpj]);
+    }
 }
 
 ?>
