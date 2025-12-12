@@ -1,13 +1,9 @@
 <?php
 require_once __DIR__ . '/../models/Cupom.php';
 require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../auth/auth.php';
+require_once __DIR__ . '/../middleware/auth.php';
 
-// Validar autenticação
-if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'comercio') {
-    header('Location: /cupom-amigo/src/views/auth/login.php');
-    exit;
-}
+requireComercio();
 
 class CupomController {
     private $cupomModel;
@@ -15,30 +11,54 @@ class CupomController {
 
     public function __construct() {
         $this->cupomModel = new Cupom(Database::getConnection());
-        $this->userCnpj = $_SESSION['user_id']; // CNPJ do comerciante logado
+        $this->userCnpj = $_SESSION['user_id'];
     }
 
     public function index() {
         require_auth();
         $filter = $_GET['filter'] ?? 'ativos';
+        $search = $_GET['search'] ?? '';
+        $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+        $perPage = 12;
+        $offset = ($page - 1) * $perPage;
+        
         switch ($filter) {
             case 'utilizados':
-                $cupons = $this->cupomModel->listarUtilizados($this->userCnpj);
+                $cupons = $this->cupomModel->listarUtilizados($this->userCnpj, $search, $perPage, $offset);
+                $totalCupons = $this->cupomModel->contarUtilizados($this->userCnpj, $search);
                 break;
             case 'vencidos':
-                $cupons = $this->cupomModel->listarVencidos($this->userCnpj);
+                $cupons = $this->cupomModel->listarVencidos($this->userCnpj, $search, $perPage, $offset);
+                $totalCupons = $this->cupomModel->contarVencidos($this->userCnpj, $search);
+                break;
+            case 'futuros':
+                $cupons = $this->cupomModel->listarFuturos($this->userCnpj, $search, $perPage, $offset);
+                $totalCupons = $this->cupomModel->contarFuturos($this->userCnpj, $search);
                 break;
             case 'ativos':
             default:
-                $cupons = $this->cupomModel->listarAtivos($this->userCnpj);
+                $cupons = $this->cupomModel->listarAtivos($this->userCnpj, $search, $perPage, $offset);
+                $totalCupons = $this->cupomModel->contarAtivos($this->userCnpj, $search);
                 break;
         }
+        
+        $totalPages = ceil($totalCupons / $perPage);
+        
+        $pagination = [
+            'current_page' => $page,
+            'total_pages' => $totalPages,
+            'per_page' => $perPage,
+            'total_items' => $totalCupons,
+            'has_prev' => $page > 1,
+            'has_next' => $page < $totalPages
+        ];
+        
         include __DIR__ . '/../views/cupons/listarComercio.php';
     }
 
     public function criar() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: /cupom-amigo/src/views/cupons/form.php');
+            header('Location: /src/views/cupons/form.php');
             exit;
         }
 
@@ -48,21 +68,20 @@ class CupomController {
         $desconto = isset($_POST['vlr_desconto']) ? (float)$_POST['vlr_desconto'] : 0;
         $qtd = isset($_POST['qtd_cupom']) ? (int)$_POST['qtd_cupom'] : 0;
 
-        // Validação básica
         if (empty($dsc) || empty($inicio) || empty($fim) || $desconto <= 0 || $qtd <= 0) {
             $_SESSION['form_error'] = 'Todos os campos são obrigatórios e o desconto/quantidade devem ser maiores que 0.';
-            header('Location: /cupom-amigo/src/views/cupons/form.php');
+            header('Location: /src/views/cupons/form.php');
             exit;
         }
 
-        if (strtotime($fim) <= strtotime($inicio)) {
-            $_SESSION['form_error'] = 'A data de término deve ser posterior à data de início.';
-            header('Location: /cupom-amigo/src/views/cupons/form.php');
+        if (strtotime($fim) < strtotime($inicio)) {
+            $_SESSION['form_error'] = 'A data de término não pode ser anterior à data de início.';
+            header('Location: /src/views/cupons/form.php');
             exit;
         }
 
         try {
-            $this->cupomModel->create([
+            $cuponsGerados = $this->cupomModel->create([
                 'dsc_cupom' => $dsc,
                 'dta_inicio' => $inicio,
                 'dta_fim' => $fim,
@@ -70,53 +89,24 @@ class CupomController {
                 'qtd_cupom' => $qtd,
                 'cnpj_comercio' => $this->userCnpj
             ]);
-            $_SESSION['form_message'] = 'Cupom criado com sucesso!';
-            header('Location: /cupom-amigo/src/views/cupons/listarComercio.php?filter=ativos');
+            
+            if ($cuponsGerados === 1) {
+                $_SESSION['form_message'] = 'Cupom criado com sucesso!';
+            } else {
+                $_SESSION['form_message'] = $cuponsGerados . ' cupons criados com sucesso!';
+            }
+            header('Location: /index.php?filter=ativos');
             exit;
         } catch (Exception $e) {
             $_SESSION['form_error'] = 'Erro ao criar cupom: ' . $e->getMessage();
-            header('Location: /cupom-amigo/src/views/cupons/form.php');
+            header('Location: /src/views/cupons/form.php');
             exit;
         }
     }
 
-    public function registrarUso() {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: /cupom-amigo/src/views/cupons/registrar.php');
-            exit;
-        }
 
-        $numCupom = isset($_POST['num_cupom']) ? trim($_POST['num_cupom']) : '';
-
-        if (empty($numCupom)) {
-            $_SESSION['registrar_error'] = 'Cupom não informado.';
-            header('Location: /cupom-amigo/src/views/cupons/registrar.php');
-            exit;
-        }
-
-        try {
-            // TODO: Implementar busca pelo CPF do associado via QR code ou entrada manual
-            // Por enquanto, para testar, você pode passar o CPF como parâmetro POST
-            $cpfAssociado = isset($_POST['cpf_associado']) ? trim($_POST['cpf_associado']) : '';
-            if (empty($cpfAssociado)) {
-                $_SESSION['registrar_error'] = 'CPF do associado não informado.';
-                header('Location: /cupom-amigo/src/views/cupons/registrar.php');
-                exit;
-            }
-
-            $this->cupomModel->confirmarUso($numCupom, $cpfAssociado);
-            $_SESSION['registrar_message'] = 'Uso do cupom registrado com sucesso!';
-            header('Location: /cupom-amigo/src/views/cupons/registrar.php');
-            exit;
-        } catch (Exception $e) {
-            $_SESSION['registrar_error'] = 'Erro ao registrar uso: ' . $e->getMessage();
-            header('Location: /cupom-amigo/src/views/cupons/registrar.php');
-            exit;
-        }
-    }
 }
 
-// Roteador simples baseado em POST action
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = isset($_POST['action']) ? $_POST['action'] : '';
     $controller = new CupomController();
@@ -129,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $controller->registrarUso();
             break;
         default:
-            header('Location: /cupom-amigo/src/views/cupons/listar.php');
+            header('Location: /src/views/cupons/listar.php');
             exit;
     }
 } else {
