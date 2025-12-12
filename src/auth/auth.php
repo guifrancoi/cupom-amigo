@@ -5,7 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 function require_auth() {
     if (!isset($_SESSION['user_id'])) {
-        header('Location: /cupom-amigo/src/views/auth/login.php');
+        header('Location: /src/views/auth/login.php');
         exit;
     }
 }
