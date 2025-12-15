@@ -56,6 +56,11 @@ $user = 'root';
 $pass = '';
 ```
 
+## 🌐 Teste o Projeto Online
+
+O **Cupom Amigo** já está disponível para testes!  
+Acesse a versão hospedada em: [https://cupom-amigo.42web.io/](https://cupom-amigo.42web.io/)
+
 ## 📄 Licença
 
 Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
