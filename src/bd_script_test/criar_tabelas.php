@@ -7,10 +7,10 @@
 require_once __DIR__ . '/../config/database.php';
 
 try {
-    // Conecta ao MySQL
+
     $conn = Database::getConnection();
 
-    // === Tabela: CATEGORIA ===
+
     $sql = "
     CREATE TABLE IF NOT EXISTS CATEGORIA (
         id_categoria INT AUTO_INCREMENT PRIMARY KEY,
@@ -19,7 +19,7 @@ try {
     ";
     $conn->exec($sql);
 
-    // === Tabela: COMERCIO ===
+
     $sql = "
     CREATE TABLE IF NOT EXISTS COMERCIO (
         cnpj_comercio VARCHAR(14) PRIMARY KEY,
@@ -38,7 +38,7 @@ try {
     ";
     $conn->exec($sql);
 
-    // === Tabela: ASSOCIADO ===
+
     $sql = "
     CREATE TABLE IF NOT EXISTS ASSOCIADO (
         cpf_associado VARCHAR(11) PRIMARY KEY,
@@ -55,7 +55,7 @@ try {
     ";
     $conn->exec($sql);
 
-    // === Tabela: CUPOM ===
+
     $sql = "
     CREATE TABLE IF NOT EXISTS CUPOM (
         num_cupom CHAR(12) PRIMARY KEY,
@@ -71,7 +71,7 @@ try {
     ";
     $conn->exec($sql);
 
-    // === Tabela: CUPOM_ASSOCIADO ===
+
     $sql = "
     CREATE TABLE IF NOT EXISTS CUPOM_ASSOCIADO (
         id_cupom_associado INT AUTO_INCREMENT PRIMARY KEY,
